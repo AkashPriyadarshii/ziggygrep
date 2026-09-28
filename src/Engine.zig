@@ -482,6 +482,18 @@ pub const Engine = struct {
         var carry: std.ArrayList(u8) = .empty;
         defer carry.deinit(self.allocator);
         var buf: [1048576]u8 = undefined;
+        // Fused ctx: same stack-header emit as the pool path, writes
+        // straight into Out instead of scratch. No spans alloc.
+        const Ctx = struct {
+            w: *Out.Writer,
+            path: []const u8,
+            max_columns: usize,
+            base: u64,
+            fn onMatch(c: *@This(), rel: u64, line: []const u8) void {
+                c.w.printMatchShifted(c.path, c.base + rel - 1, line, c.max_columns) catch {};
+            }
+        };
+        var fctx = Ctx{ .w = w, .path = path, .max_columns = self.max_columns, .base = 1 };
         while (true) {
             const n = IoMod.raw_io.read(fd, &buf) catch |err| {
                 if (err == error.WouldBlock) continue;
@@ -493,24 +505,16 @@ pub const Engine = struct {
             const data = carry.items;
             const last_nl = std.mem.lastIndexOfScalar(u8, data, '\n') orelse continue;
             const complete = data[0 .. last_nl + 1];
-            const spans = try Search.searchWith(self.allocator, complete, self.needle, self.pair);
-            defer self.allocator.free(spans);
-            for (spans) |s| {
-                try w.printMatch(path, lineno + s.lineno - 1, complete[s.start..s.end], self.max_columns);
-            }
-            total += spans.len;
+            fctx.base = lineno;
+            total += Search.emit(complete, self.needle, self.pair, &fctx, Ctx.onMatch);
             lineno += std.mem.countScalar(u8, complete, '\n');
             const rest_len = data.len - (last_nl + 1);
             std.mem.copyForwards(u8, carry.items[0..rest_len], data[last_nl + 1 ..]);
             carry.items.len = rest_len;
         }
         if (carry.items.len > 0) {
-            const spans = try Search.searchWith(self.allocator, carry.items, self.needle, self.pair);
-            defer self.allocator.free(spans);
-            for (spans) |s| {
-                try w.printMatch(path, lineno + s.lineno - 1, carry.items[s.start..s.end], self.max_columns);
-            }
-            total += spans.len;
+            fctx.base = lineno;
+            total += Search.emit(carry.items, self.needle, self.pair, &fctx, Ctx.onMatch);
         }
         return total;
     }

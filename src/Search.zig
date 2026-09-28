@@ -192,7 +192,18 @@ fn countChunkShort(content: []const u8, needle: []const u8) usize {
 /// Chunk-level any-match: stop at first hit anywhere.
 pub fn anyChunk(content: []const u8, needle: []const u8) bool {
     if (needle.len == 0 or content.len == 0) return false;
-    return std.mem.indexOf(u8, content, needle) != null;
+    // Len 1: memchr scalar beats the generic indexOf dispatch.
+    if (needle.len == 1) return std.mem.indexOfScalar(u8, content, needle[0]) != null;
+    // Len>=2: first-byte skip + eql verify, exit on first confirm.
+    // No line walk, no lineno: existence only.
+    const n = needle.len;
+    const first = needle[0];
+    var pos: usize = 0;
+    while (std.mem.indexOfScalarPos(u8, content, pos, first)) |m| {
+        if (m + n <= content.len and std.mem.eql(u8, content[m..][0..n], needle)) return true;
+        pos = m + 1;
+    }
+    return false;
 }
 
 /// Same as search but reuses a precomputed pair. Workers compute the pair

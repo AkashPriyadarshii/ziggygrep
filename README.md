@@ -70,7 +70,7 @@ Recursive search tools scan every byte on every query. ziggygrep cuts the cost p
 | What you get | Why it matters |
 |---|---|
 | One binary, zero services | `zig build -Doptimize=ReleaseFast`. No runtime, no index build, no daemon. |
-| Literal-first engine | `std.mem.indexOf` prefilter, short-line skip, jump-past-line. Lines that cannot hold the pattern cost one scan, zero slicing. |
+| Literal-first engine | First-byte prefilter + `eql` verify, line bounding only on hits. Positions that cannot start the pattern cost one memchr step, zero slicing. |
 | Threaded file sweep | `std.Thread.Pool`, one file per task, per-thread byte arenas, files sorted at merge. |
 | Flat memory | Streaming reads, no mmap, works on pipes. |
 | Exit codes pipelines respect | `0` match found, `1` no match, `2` usage or I/O error. |
@@ -128,13 +128,13 @@ Benchmarks land here once v0.1 ships. Every number below must be a measured medi
 | Line-level parity | 112426/112426 lines match `rg -F` | `rg --no-config -F --no-heading --line-number` diff |
 | Test suite | `zig test` 22 green | per-file `zig test src/<mod>.zig` |
 
-Method: 200-file 53MB Rust corpus, ReleaseFast binary (x86_64-v3/AVX2), stdout piped to null, median-of-9, Windows MSYS2. rg 15.2.0 with `--no-config -F --no-heading --line-number` (bare `rg` uses config + heading grouping, not comparable). Confirm step is packed-pair SIMD (two rarest needle bytes, 32-wide compare, verify survivors). Speedups are ratios of medians on that fixture; your disk and cache shape your numbers.
+Method: 200-file 53MB Rust corpus, ReleaseFast binary (x86_64-v3/AVX2), stdout piped to null, median-of-9, Windows MSYS2. rg 15.2.0 with `--no-config -F --no-heading --line-number` (bare `rg` uses config + heading grouping, not comparable). Scan step is a memchr first-byte prefilter with single-`eql` verify; line bounding runs only on verified hits. Speedups are ratios of medians on that fixture; your disk and cache shape your numbers.
 
 ---
 
 ## Architecture
 
-- **Literal scan, no regex engine.** First-byte prefilter, line bounding, substring confirm. Short lines skipped, finished lines jumped past.
+- **Literal scan, no regex engine.** First-byte prefilter, line bounding on hits only, `eql` confirm. Same-line hits deduped, finished lines jumped past.
 - **Thread pool over files.** One file per task, per-thread output arenas, deterministic file-sorted merge.
 - **Buffered stdout.** One lock, one flush, no per-line syscalls.
 - **No mmap.** Streaming I/O keeps memory flat and works on pipes.
@@ -146,7 +146,7 @@ src/
   Walk.zig    - recursive directory walk, pushes to queue
   Queue.zig   - bounded MPMC ring, walker to workers (+ unit tests)
   Search.zig  - literal line scan (+ unit tests)
-  Simd.zig    - packed-pair SIMD confirm, rarest-two bytes (+ unit tests)
+  Simd.zig    - rarity table + pair picker, kept for long-line corpora (+ unit tests)
   Engine.zig  - thread pool, walk-to-queue, sorted merge
   Out.zig     - output formatting, buffered writes
 build.zig     - Zig build script
