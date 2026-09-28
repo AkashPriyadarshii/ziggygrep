@@ -1,0 +1,5 @@
+# ---> Zig <---
+tools/*.py linguist-vendored
+site/* linguist-vendored
+zig-out/* linguist-vendored
+.zig-cache/* linguist-vendored

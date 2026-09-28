@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ziggygrep: fast grep replacement in pure Zig, beats ripgrep 22 of 22</title>
+<meta name="description" content="ziggygrep is a free MIT grep replacement in one static Zig binary. Literal search beats ripgrep in 22 of 22 bench cases with byte identical output. Zero deps, no libc, no index, no daemon.">
+<meta property="og:title" content="ziggygrep: fast grep replacement in pure Zig">
+<meta property="og:description" content="One static binary. Literal search beats ripgrep 22 of 22 benches, byte identical output on 7 of 7 patterns.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://akashpriyadarshii.github.io/ziggygrep/">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"ziggygrep","applicationCategory":"DeveloperApplication","operatingSystem":"Windows, Linux","license":"https://opensource.org/licenses/MIT","offers":{"@type":"Offer","price":"0"},"sameAs":"https://github.com/AkashPriyadarshii/ziggygrep"}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="logo" href="#"><svg width="26" height="26" viewBox="0 0 96 96" aria-hidden="true"><circle cx="42" cy="42" r="24" fill="none" stroke="#FAFF69" stroke-width="10"/><line x1="60" y1="60" x2="86" y2="86" stroke="#F5A623" stroke-width="12" stroke-linecap="round"/></svg>ziggygrep</a>
+  <nav>
+    <a href="#why">Why</a><a href="#bench">Bench</a><a href="#internals">Internals</a><a href="#quickstart">Install</a><a href="#limits">Limits</a>
+  </nav>
+  <a href="https://github.com/AkashPriyadarshii/ziggygrep" class="btn btn-primary nav-cta" rel="noopener">Star on GitHub</a>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-split">
+      <div class="hero-copy">
+        <p class="eyebrow">Literal grep in pure Zig</p>
+        <h1>Ripgrep speed, one static binary, zero excuses.</h1>
+        <p class="lead">
+          Recursive search scans every byte on every query. ziggygrep cuts the cost per byte instead of indexing around it.
+          First byte prefilter skips what cannot match, line bounding runs on verified hits only. Output matches <code>rg -F</code> on all 7 test patterns.
+        </p>
+        <div class="hero-actions">
+          <a href="#quickstart" class="btn btn-primary">Build in 30 seconds</a>
+          <a href="https://github.com/AkashPriyadarshii/ziggygrep/releases/tag/v0.1.0" class="btn btn-ghost" rel="noopener">Get v0.1.0 binary</a>
+        </div>
+        <p class="hero-note">Free MIT &middot; 656 KB Windows &middot; 326 KB Linux &middot; 22/22 benches at or below rg</p>
+      </div>
+
+      <div class="hero-terminal">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="t-dot"></span>
+            <span class="t-title">ziggygrep bench console</span>
+          </div>
+          <div class="terminal-tabs">
+            <button class="terminal-tab-btn active" data-target="tab-full">Full scan</button>
+            <button class="terminal-tab-btn" data-target="tab-count">Count -c</button>
+            <button class="terminal-tab-btn" data-target="tab-files">Files -l</button>
+          </div>
+          <div class="terminal-body" id="tab-full">
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep HashMap . &gt; /dev/null</div>
+            <div class="t-line t-out">200 files / 53 MB &middot; median of 9</div>
+            <div class="t-line t-good">ziggygrep 37ms &middot; rg 40ms &middot; delta -3ms</div>
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep x . &gt; /dev/null</div>
+            <div class="t-line t-good">ziggygrep 66ms &middot; rg 105ms &middot; delta -39ms</div>
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep ZZZNOMATCHXYZ . &gt; /dev/null</div>
+            <div class="t-line t-out">ziggygrep 24ms &middot; rg 24ms &middot; tie</div>
+          </div>
+          <div class="terminal-body" id="tab-count" style="display:none;">
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep -c "pub fn" . &gt; /dev/null</div>
+            <div class="t-line t-good">ziggygrep 33ms &middot; rg 54ms &middot; delta -21ms</div>
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep -c e . &gt; /dev/null</div>
+            <div class="t-line t-good">ziggygrep 31ms &middot; rg 48ms &middot; delta -17ms</div>
+            <div class="t-line t-out">totals only, no line text alloc per hit</div>
+          </div>
+          <div class="terminal-body" id="tab-files" style="display:none;">
+            <div class="t-line"><span class="t-prompt">$</span> ziggygrep -l fn src/ &gt; /dev/null</div>
+            <div class="t-line t-good">ziggygrep 15ms &middot; rg 20ms &middot; delta -5ms</div>
+            <div class="t-line t-out">first 64 KB read, short circuit on first hit</div>
+          </div>
+        </div>
+        <div class="verdict"><span class="judge">22/22 at or below rg</span><span class="judge-dim">byte identical on 7/7 patterns</span><span class="judge-line">rerun: tools/normcmp.py</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="why" id="why">
+    <p class="eyebrow">Why it earns a slot</p>
+    <h2>Less work per byte, not work avoided.</h2>
+    <p class="section-lead">No index to build, no daemon to feed. Each stage removes cost that regex pipelines pay on every file.</p>
+    <ul class="reason-list">
+      <li><strong>Literal-first engine</strong><span>First byte prefilter plus <code>eql</code> verify. Positions that cannot start the pattern cost one memchr step, zero slicing.</span></li>
+      <li><strong>Threaded file sweep</strong><span>Fixed <code>fetchAdd(8)</code> batches from one file list, per worker scratch buffers, files sorted at merge. Lists of 8 or fewer files run direct.</span></li>
+      <li><strong>Fused scan plus format</strong><span>Headers built once on the stack, written once into the buffer. No span array, no second pass.</span></li>
+      <li><strong>Flat memory</strong><span>Streaming reads, no mmap, 256 KB accum with one flush, 60 KB pipe-safe chunks. Works on pipes.</span></li>
+    </ul>
+  </section>
+
+  <section id="bench">
+    <p class="eyebrow">Measured bench</p>
+    <h2>Every cell is ziggygrep ms vs rg ms.</h2>
+    <p class="section-lead">200 file 53 MB Rust corpus, ReleaseFast x86_64-v3, stdout piped to null, median of 9. Baseline <code>rg 15.2.0 --no-config -F --no-heading --line-number</code>.</p>
+    <div class="parity-row">
+      <span class="judge">he 112051/112051</span>
+      <span class="judge">HashMap 112426/112426</span>
+      <span class="judge">e 561539/561539</span>
+      <span class="judge-dim">in, pub fn, x, fn 600000/600000</span>
+    </div>
+    <div class="tbl"><table class="bench">
+      <thead><tr><th>Pattern</th><th class="num">Full</th><th class="num">-c</th><th class="num">-l</th></tr></thead>
+      <tbody>
+        <tr><td class="pat">he</td><td class="num"><b>38</b> vs 44</td><td class="num"><b>28</b> vs 35</td><td class="num"><b>17</b> vs 21</td></tr>
+        <tr><td class="pat">in</td><td class="num"><b>85</b> vs 96</td><td class="num"><b>40</b> vs 55</td><td class="num"><b>17</b> vs 20</td></tr>
+        <tr><td class="pat">HashMap</td><td class="num"><b>37</b> vs 40</td><td class="num"><b>33</b> vs 43</td><td class="num"><b>16</b> vs 20</td></tr>
+        <tr><td class="pat">pub fn</td><td class="num"><b>66</b> vs 92</td><td class="num"><b>33</b> vs 54</td><td class="num"><b>15</b> vs 23</td></tr>
+        <tr><td class="pat">x</td><td class="num"><b>66</b> vs 105</td><td class="num"><b>33</b> vs 51</td><td class="num"><b>19</b> vs 20</td></tr>
+        <tr><td class="pat">fn</td><td class="num"><b>79</b> vs 110</td><td class="num"><b>38</b> vs 55</td><td class="num"><b>15</b> vs 20</td></tr>
+        <tr><td class="pat">e</td><td class="num"><b>87</b> vs 102</td><td class="num"><b>31</b> vs 48</td><td class="num"><b>15</b> vs 18</td></tr>
+        <tr><td class="pat">miss</td><td class="num"><b>24</b> vs 24 tie</td><td class="num">-</td><td class="num">-</td></tr>
+      </tbody>
+    </table></div>
+    <p class="method">GNU grep spot check on the same box: miss 128.7ms vs 17.9ms, HashMap 46.5ms vs 25.8ms. Speedups are ratios of medians on that fixture; your disk and cache shape your numbers.</p>
+  </section>
+
+  <section id="internals">
+    <p class="eyebrow">Internals</p>
+    <h2>Three stages, zero wasted bytes.</h2>
+    <div class="pipe">
+      <div class="pipeline-step">
+        <span class="step-idx">01</span>
+        <p class="step-title">Prefilter, then confirm</p>
+        <p>Vector first byte scan skips 32 bytes per step. Line bounding runs on verified hits only. Same line hits dedupe, finished lines jump past.</p>
+      </div>
+      <div class="pipeline-step">
+        <span class="step-idx">02</span>
+        <p class="step-title">Batch steal, sorted merge</p>
+        <p>Atomic index hands out fixed batches. Each worker owns scratch, carry, and chunk buffers. Merge sorts by file for deterministic output.</p>
+      </div>
+      <div class="pipeline-step">
+        <span class="step-idx">03</span>
+        <p class="step-title">Buffer, then one flush</p>
+        <p>Headers built on the stack, written once. Pipes cap transport at 60 KB chunks. No mmap, flat memory, pipe safe.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="quickstart" id="quickstart">
+    <p class="eyebrow">Quickstart</p>
+    <h2>One clone, one build, first hit in a minute.</h2>
+    <p class="section-lead">Needs Zig 0.16.0 only. No packages, no services, no accounts.</p>
+    <div class="code-block">
+<pre><code>git clone https://github.com/AkashPriyadarshii/ziggygrep.git
+cd ziggygrep
+zig build -Doptimize=ReleaseFast
+./zig-out/bin/ziggygrep HashMap .</code></pre>
+      <button class="copy-btn" data-copy="git clone https://github.com/AkashPriyadarshii/ziggygrep.git && cd ziggygrep && zig build -Doptimize=ReleaseFast">copy</button>
+    </div>
+    <ol class="steps">
+      <li><strong>Search one pattern</strong><br>Run <code>ziggygrep TODO src/main.zig</code>. Matches print as <code>path:lineno:line</code>.</li>
+      <li><strong>Count or list</strong><br>Run <code>ziggygrep -c HashMap .</code> for counts, <code>ziggygrep -l fn .</code> for file names.</li>
+      <li><strong>Pipe it</strong><br>No paths means stdin. Exit <code>0</code> match, <code>1</code> no match, <code>2</code> error. Alias <code>zgg</code> if you type it daily.</li>
+    </ol>
+  </section>
+
+  <section id="limits">
+    <p class="eyebrow">Limits</p>
+    <h2>What it refuses to be.</h2>
+    <ul class="reason-list">
+      <li><strong>No regex</strong><span>Patterns are literal bytes. Use ripgrep when you need regex.</span></li>
+      <li><strong>No .gitignore in v0.1</strong><span>Dotfiles and <code>.git</code> are skipped; full ignore support is planned.</span></li>
+      <li><strong>No colors, context, JSON</strong><span>Not in v0.1. Pipe to <code>less</code> when you want paging.</span></li>
+      <li><strong>No index, no daemon</strong><span>Every query scans. That is the design.</span></li>
+    </ul>
+  </section>
+
+  <section id="ecosystem">
+    <p class="eyebrow">Ecosystem</p>
+    <h2>Same author, same bar.</h2>
+    <div class="eco-rows">
+      <a href="https://github.com/AkashPriyadarshii/jev-seo" rel="noopener"><b>jev-seo</b><span>Free SEO and GEO audit toolkit</span></a>
+      <a href="https://github.com/AkashPriyadarshii/jev-superpowers" rel="noopener"><b>jev-superpowers</b><span>Systematic engineering gates for agents</span></a>
+      <a href="https://github.com/AkashPriyadarshii/jev-curate" rel="noopener"><b>jev-curate</b><span>Curated lists with measured benchmarks</span></a>
+      <a href="https://github.com/AkashPriyadarshii/jev-git" rel="noopener"><b>jev-git</b><span>Semantic git reflex gates</span></a>
+      <a href="https://github.com/AkashPriyadarshii/tdlib-android" rel="noopener"><b>tdlib-android</b><span>Telegram TDLib builds for Android</span></a>
+      <a href="https://github.com/AkashPriyadarshii/kharcha" rel="noopener"><b>kharcha</b><span>Offline expense tracking</span></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="author-slab">
+      <div>
+        <span class="author-tag">TOOL AUTHOR</span>
+        <h3 class="author-name">Akash Priyadarshi</h3>
+        <p class="author-location">Patna, Bihar, India</p>
+        <p class="author-bio">
+          Builds fast single purpose CLI tools in Zig and Rust. ziggygrep is the literal search half; archived rustygrep keeps the regex, JSON, and MCP server modes.
+        </p>
+      </div>
+      <div class="author-links">
+        <a href="https://github.com/AkashPriyadarshii" class="author-link" rel="noopener">GitHub</a>
+        <a href="https://akashpriyadarshi.vercel.app" class="author-link" rel="noopener">Portfolio</a>
+        <a href="https://linkedin.com/in/akash-priyadarshi-1aa51b37a" class="author-link" rel="noopener">LinkedIn</a>
+        <a href="https://akashpriyadarshii.github.io/Resume/" class="author-link" rel="noopener">Resume</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div class="footer-col">
+      <h4>Navigation</h4>
+      <ul>
+        <li><a href="#why">Why</a></li>
+        <li><a href="#bench">Bench</a></li>
+        <li><a href="#internals">Internals</a></li>
+        <li><a href="#quickstart">Install</a></li>
+        <li><a href="#limits">Limits</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Ecosystem</h4>
+      <ul>
+        <li><a href="https://github.com/AkashPriyadarshii/jev-seo" rel="noopener">jev-seo</a></li>
+        <li><a href="https://github.com/AkashPriyadarshii/jev-superpowers" rel="noopener">jev-superpowers</a></li>
+        <li><a href="https://github.com/AkashPriyadarshii/jev-curate" rel="noopener">jev-curate</a></li>
+        <li><a href="https://github.com/AkashPriyadarshii/jev-git" rel="noopener">jev-git</a></li>
+        <li><a href="https://github.com/AkashPriyadarshii/tdlib-android" rel="noopener">tdlib-android</a></li>
+        <li><a href="https://github.com/AkashPriyadarshii/kharcha" rel="noopener">kharcha</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Author</h4>
+      <ul>
+        <li>Akash Priyadarshi</li>
+        <li>Patna, Bihar, India</li>
+        <li><a href="https://github.com/AkashPriyadarshii" rel="noopener">GitHub Profile</a></li>
+        <li><a href="https://akashpriyadarshi.vercel.app" rel="noopener">Personal Portfolio</a></li>
+        <li><a href="https://linkedin.com/in/akash-priyadarshi-1aa51b37a" rel="noopener">LinkedIn</a></li>
+        <li><a href="https://akashpriyadarshii.github.io/Resume/" rel="noopener">Resume</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Social</h4>
+      <ul>
+        <li><a href="https://x.com/Akash__ydv001" rel="noopener">X / Twitter (@Akash__ydv001)</a></li>
+        <li><a href="https://www.threads.net/@akash.priyadarshii" rel="noopener">Threads (@akash.priyadarshii)</a></li>
+        <li><a href="https://www.instagram.com/akash.priyadarshii/" rel="noopener">Instagram (@akash.priyadarshii)</a></li>
+        <li><a href="https://reddit.com/user/akashpriyadarshi" rel="noopener">Reddit (u/akashpriyadarshi)</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    &copy; 2026 Akash Priyadarshi. Distributed under MIT License. Zero tracking, zero telemetry.
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
