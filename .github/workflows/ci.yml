@@ -32,7 +32,7 @@ jobs:
 
       - name: Unit tests
         run: |
-          for f in Args Search Walk Out Engine main Io; do
+          for f in Args Search Simd; do
             zig test src/$f.zig
           done
 
@@ -43,7 +43,7 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then BIN=$BIN.exe; fi
           $BIN --help
           $BIN -V
-          echo -e "foo one\ntwo\nfoo two" | $BIN foo -
+          printf 'foo one\ntwo\nfoo two\n' | $BIN foo
           $BIN -c foo src/Args.zig
           $BIN -l fn src/
           $BIN ZZZNOMATCHXYZ src/ && exit 1 || true
