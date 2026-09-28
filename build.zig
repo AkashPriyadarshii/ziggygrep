@@ -25,6 +25,9 @@ pub fn build(b: *std.Build) void {
         .name = "ziggygrep",
         .root_module = root_module,
     });
+    if (optimize != .Debug) {
+        exe.root_module.strip = true;
+    }
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
