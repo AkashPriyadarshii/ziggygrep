@@ -167,14 +167,14 @@ Every number below is a measured median-of-9 with stdout piped to null, never a 
 
 | Pattern | Full (`PATTERN .`) | `-c` counts | `-l` files-only |
 |---|---|---|---|
-| `he` | 38 vs 44 | 28 vs 35 | 17 vs 21 |
-| `in` | 85 vs 96 | 40 vs 55 | 17 vs 20 |
-| `HashMap` | 37 vs 40 | 33 vs 43 | 16 vs 20 |
-| `pub fn` | 66 vs 92 | 33 vs 54 | 15 vs 23 |
-| `x` | 66 vs 105 | 33 vs 51 | 19 vs 20 |
-| `fn` | 79 vs 110 | 38 vs 55 | 15 vs 20 |
-| `e` | 87 vs 102 | 31 vs 48 | 15 vs 18 |
-| Miss (`ZZZNOMATCHXYZ`) | 24 vs 24 tie | - | - |
+| `he` | 38ms vs 44ms | 28ms vs 35ms | 17ms vs 21ms |
+| `in` | 85ms vs 96ms | 40ms vs 55ms | 17ms vs 20ms |
+| `HashMap` | 37ms vs 40ms | 33ms vs 43ms | 16ms vs 20ms |
+| `pub fn` | 66ms vs 92ms | 33ms vs 54ms | 15ms vs 23ms |
+| `x` | 66ms vs 105ms | 33ms vs 51ms | 19ms vs 20ms |
+| `fn` | 79ms vs 110ms | 38ms vs 55ms | 15ms vs 20ms |
+| `e` | 87ms vs 102ms | 31ms vs 48ms | 15ms vs 18ms |
+| Miss (`ZZZNOMATCHXYZ`) | 24ms vs 24ms tie | - | - |
 
 Each cell reads `ziggygrep ms vs rg ms`. Rerun any cell: `ziggygrep [-c|-l] PATTERN . > /dev/null` against `rg --no-config -F --no-heading --line-number [-c|-l] PATTERN . > /dev/null`.
 
