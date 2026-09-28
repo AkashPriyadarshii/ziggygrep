@@ -38,10 +38,14 @@ pub const Engine = struct {
         defer files.deinit(self.allocator);
         try Walk.pushAll(self.allocator, self.io, roots, &files);
         if (files.items.len == 0) return 0;
-        const cpus = std.Thread.getCpuCount() catch 1;
-        // Walker is done by now: all logical cores scan. One file =
-        // single-thread, no spawn cost.
+        // One file = single-thread, no spawn cost. Few small files =
+        // direct too: thread spawn + merge beats nothing under ~8.
         if (files.items.len == 1) return self.runFiles(files.items[0..1]);
+        if (files.items.len <= 8) return self.runFiles(files.items);
+        // Pool only above the direct threshold: getCpuCount + spawn
+        // costs more than it saves on small lists (miss path walks
+        // 200 files but matches zero: spawn tax dominated it).
+        const cpus = std.Thread.getCpuCount() catch 1;
         const nw = @min(@max(cpus, 1), @min(files.items.len, 8));
         var bstate = BatchState{
             .engine = self,
