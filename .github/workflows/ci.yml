@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-windows
+          - os: ubuntu-latest
+            target: x86_64-linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: '0.16.0'
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseFast -Dtarget=${{ matrix.target }}
+
+      - name: Unit tests
+        run: |
+          for f in Args Search Walk Out Engine main Io; do
+            zig test src/$f.zig
+          done
+
+      - name: Smoke tests
+        shell: bash
+        run: |
+          BIN=zig-out/bin/ziggygrep
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then BIN=$BIN.exe; fi
+          $BIN --help
+          $BIN -V
+          echo -e "foo one\ntwo\nfoo two" | $BIN foo -
+          $BIN -c foo src/Args.zig
+          $BIN -l fn src/
+          $BIN ZZZNOMATCHXYZ src/ && exit 1 || true
