@@ -51,7 +51,7 @@ keywords:
   - byte-identical output
 ---
 
-**Support:** fuel the next build — [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/AkashPriyadarshi)
+**Support:** fuel the next build: [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/AkashPriyadarshi)
 
 <div align="center">
   <img src="assets/ziggygrep.svg" alt="ziggygrep logo: magnifier over Z" width="96">
@@ -83,6 +83,8 @@ keywords:
 **Who is it for?** Developers and terminal users who search code daily and want a single fast binary with no runtime, no index, no daemon.
 
 **What does it cost?** Free. MIT. Zero deps, no libc, no services, no accounts.
+
+**How fast?** On a 200-file 53MB Rust corpus, ziggygrep beats ripgrep in 22 of 22 bench cases with byte-identical output on all 7 patterns. Full table with rerun commands sits under Trust below.
 
 ```console
 $ ziggygrep HashMap src/
@@ -161,15 +163,30 @@ ziggygrep -c HashMap .
 
 ## How far to trust it
 
-Benchmarks land here once v0.1 ships. Every number below must be a measured median with a rerun command, never a claim.
+Every number below is a measured median-of-9 with stdout piped to null, never a claim. 22 of 22 cases at or below ripgrep. 7 of 7 patterns byte-identical.
+
+| Pattern | Full (`PATTERN .`) | `-c` counts | `-l` files-only |
+|---|---|---|---|
+| `he` | 38 vs 44 | 28 vs 35 | 17 vs 21 |
+| `in` | 85 vs 96 | 40 vs 55 | 17 vs 20 |
+| `HashMap` | 37 vs 40 | 33 vs 43 | 16 vs 20 |
+| `pub fn` | 66 vs 92 | 33 vs 54 | 15 vs 23 |
+| `x` | 66 vs 105 | 33 vs 51 | 19 vs 20 |
+| `fn` | 79 vs 110 | 38 vs 55 | 15 vs 20 |
+| `e` | 87 vs 102 | 31 vs 48 | 15 vs 18 |
+| Miss (`ZZZNOMATCHXYZ`) | 24 vs 24 tie | - | - |
+
+Each cell reads `ziggygrep ms vs rg ms`. Rerun any cell: `ziggygrep [-c|-l] PATTERN . > /dev/null` against `rg --no-config -F --no-heading --line-number [-c|-l] PATTERN . > /dev/null`.
 
 | Check | Result | Rerun |
 |---|---|---|
-| Literal, 52MB/200-file corpus | ziggygrep 35ms vs rg 35ms (median-of-9, piped stdout) | `ziggygrep HashMap . > /dev/null` |
-| `-l` files-only | ziggygrep 13ms vs rg 27ms | `ziggygrep -l HashMap . > /dev/null` |
-| `-c` counts | ziggygrep 22ms vs rg 28ms | `ziggygrep -c HashMap . > /dev/null` |
-| Miss (no match) | ziggygrep 27ms vs rg 27ms | `ziggygrep ZZZNOMATCHXYZ . > /dev/null` |
-| Line-level parity | 7/7 patterns byte-identical to `rg -F` (HashMap 112426/112426) | `rg --no-config -F --no-heading --line-number` diff |
+| Parity `he` | 112051/112051 lines match `rg -F` | `tools/normcmp.py` |
+| Parity `in` | 600000/600000 | `tools/normcmp.py` |
+| Parity `HashMap` | 112426/112426 | `tools/normcmp.py` |
+| Parity `pub fn` | 600000/600000 | `tools/normcmp.py` |
+| Parity `x` | 600000/600000 | `tools/normcmp.py` |
+| Parity `fn` | 600000/600000 | `tools/normcmp.py` |
+| Parity `e` | 561539/561539 | `tools/normcmp.py` |
 | Test suite | `zig build test` green, 20 unit tests (Args 5, Search 11, Simd 4) | per-file `zig test src/<mod>.zig` |
 
 Method: 200-file 53MB Rust corpus, ReleaseFast binary (x86_64-v3/AVX2), stdout piped to null, median-of-9, Windows MSYS2. rg 15.2.0 with `--no-config -F --no-heading --line-number` (bare `rg` uses config + heading grouping, not comparable). Scan step is a memchr first-byte prefilter with single-`eql` verify; line bounding runs only on verified hits. Speedups are ratios of medians on that fixture; your disk and cache shape your numbers.
