@@ -238,7 +238,12 @@ Tests live beside the code they cover. Non-trivial logic ships with one runnable
 
 ## Ecosystem
 
-`jev-seo` (https://github.com/AkashPriyadarshii/jev-seo) · `jev-superpowers` (https://github.com/AkashPriyadarshii/jev-superpowers) · `jev-curate` (https://github.com/AkashPriyadarshii/jev-curate) · `jev-git` (https://github.com/AkashPriyadarshii/jev-git) · `tdlib-android` (https://github.com/AkashPriyadarshii/tdlib-android) · `kharcha` (https://github.com/AkashPriyadarshii/kharcha)
+- [jev-seo](https://github.com/AkashPriyadarshii/jev-seo)
+- [jev-superpowers](https://github.com/AkashPriyadarshii/jev-superpowers)
+- [jev-curate](https://github.com/AkashPriyadarshii/jev-curate)
+- [jev-git](https://github.com/AkashPriyadarshii/jev-git)
+- [tdlib-android](https://github.com/AkashPriyadarshii/tdlib-android)
+- [kharcha](https://github.com/AkashPriyadarshii/kharcha)
 
 ---
 
