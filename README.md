@@ -238,13 +238,7 @@ Tests live beside the code they cover. Non-trivial logic ships with one runnable
 
 ## Ecosystem
 
-Code search and file reading as token-budgeted CLI tools:
-
-- [ziggygrep](https://github.com/AkashPriyadarshii/ziggygrep) - find a needle (you are here)
-- [ziggycat](https://github.com/AkashPriyadarshii/ziggycat) - read a file
-- [rustygrep](https://github.com/AkashPriyadarshii/rustygrep) - find a needle with regex, JSON, and LLM output
-
-More from the same author: [jev-seo](https://github.com/AkashPriyadarshii/jev-seo) · [jev-curate](https://github.com/AkashPriyadarshii/jev-curate) · [jev-superpowers](https://github.com/AkashPriyadarshii/jev-superpowers) · [jev-git](https://github.com/AkashPriyadarshii/jev-git) · [tdlib-android](https://github.com/AkashPriyadarshii/tdlib-android) · [kharcha](https://github.com/AkashPriyadarshii/kharcha)
+`jev-seo` (https://github.com/AkashPriyadarshii/jev-seo) · `jev-superpowers` (https://github.com/AkashPriyadarshii/jev-superpowers) · `jev-curate` (https://github.com/AkashPriyadarshii/jev-curate) · `jev-git` (https://github.com/AkashPriyadarshii/jev-git) · `tdlib-android` (https://github.com/AkashPriyadarshii/tdlib-android) · `kharcha` (https://github.com/AkashPriyadarshii/kharcha)
 
 ---
 
@@ -254,10 +248,10 @@ MIT. Built by Akash Priyadarshi (Patna, Bihar, India).
 
 - GitHub: [AkashPriyadarshii](https://github.com/AkashPriyadarshii)
 - Portfolio: [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
-- LinkedIn: [akashpriyadarshii](https://linkedin.com/in/akashpriyadarshii)
+- LinkedIn: [akash-priyadarshi-1aa51b37a](https://linkedin.com/in/akash-priyadarshi-1aa51b37a)
 - Resume: [akashpriyadarshii.github.io/Resume](https://akashpriyadarshii.github.io/Resume/)
 
-Social: [X/Twitter](https://x.com/Akash__ydv001) · [Threads](https://www.threads.com/@free_dev2026) · [Instagram](https://www.instagram.com/akash.priyadarshii/) · [Reddit](https://reddit.com/user/akashpriyadarshi)
+Social: [X/Twitter](https://x.com/Akash__ydv001) · [Threads](https://www.threads.net/@akash.priyadarshii) · [Instagram](https://www.instagram.com/akash.priyadarshii/) · [Reddit](https://reddit.com/user/akashpriyadarshi)
 
 ---
 

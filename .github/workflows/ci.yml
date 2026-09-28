@@ -46,11 +46,7 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then BIN=$BIN.exe; fi
           $BIN --help
           $BIN -V
-          # Stdin uses raw syscalls; run on Linux and Windows where tested.
-          # macOS runner bypasses stdin smoke, tests directory search instead.
-          if [ "${{ matrix.os }}" != "macos-latest" ]; then
-            printf 'foo one\ntwo\nfoo two\n' | $BIN foo
-          fi
+          printf 'foo one\ntwo\nfoo two\n' | $BIN foo
           $BIN -c foo src/Args.zig
           $BIN -l fn src/
           $BIN ZZZNOMATCHXYZ src/ && exit 1 || true

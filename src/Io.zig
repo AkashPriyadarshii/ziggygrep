@@ -252,8 +252,18 @@ pub const raw_io = if (is_windows) struct {
     };
 
     pub fn read(hFile: usize, buf: []u8) !usize {
-        // Reads come from the same raw-syscall path as writes: macOS
-        // returns errors via carry flag, Linux returns -errno.
+        if (comptime is_macos) {
+            const ret = std.c.read(@intCast(hFile), buf.ptr, buf.len);
+            if (ret < 0) {
+                return switch (std.c._errno().*) {
+                    4 => error.WouldBlock, // EINTR
+                    else => error.InputOutput,
+                };
+            }
+            return @intCast(ret);
+        }
+        // Reads come from the same raw-syscall path as writes:
+        // Linux returns -errno.
         const ret: isize = @bitCast(sys_read.call(@intCast(hFile), buf.ptr, buf.len));
         if (ret < 0) {
             return switch (@as(u32, @truncate(@as(u64, @bitCast(-ret))))) {
@@ -265,6 +275,17 @@ pub const raw_io = if (is_windows) struct {
     }
 
     pub fn write(hFile: usize, bytes: []const u8) !usize {
+        if (comptime is_macos) {
+            const ret = std.c.write(@intCast(hFile), bytes.ptr, bytes.len);
+            if (ret < 0) {
+                return switch (std.c._errno().*) {
+                    32 => error.BrokenPipe, // EPIPE
+                    else => error.InputOutput,
+                };
+            }
+            if (ret == 0 and bytes.len > 0) return error.InputOutput;
+            return @intCast(ret);
+        }
         // Raw syscalls return -errno on failure.
         const ret: isize = @bitCast(sys_write.call(@intCast(hFile), bytes.ptr, bytes.len));
         if (ret < 0) {
