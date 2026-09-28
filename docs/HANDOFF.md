@@ -2,19 +2,25 @@
 
 ## Status
 
-Skeleton only. No source files yet. Docs define v0.1 scope.
+v0.1 source complete. 22 of 22 bench cases at or below rg, 7 of 7 patterns byte-identical. Two local commits, no remote yet.
 
-## Next steps
+## What shipped
 
-1. `build.zig` + `build.zig.zon` (Zig 0.16.0, exe `ziggygrep`).
-2. `src/Args.zig` with parser + unit tests.
-3. `src/Search.zig` line scan, port the proven algorithm:
-   first-byte prefilter, line bounding, short-line skip,
-   jump-past-line, confirm-first NUL check.
-4. `src/Walk.zig` recursive walk, skip dotfiles + `.git`.
-5. `src/Out.zig` formatting + buffered writes.
-6. `src/main.zig` wiring, thread pool, exit codes.
-7. Bench vs ripgrep on a fixed corpus, medians + rerun table.
+1. `build.zig` + `build.zig.zon` (Zig 0.16.0, exe `ziggygrep`, x86_64-v3 on release).
+2. `src/Args.zig` parser + 5 unit tests.
+3. `src/Search.zig` first-byte prefilter + `eql` verify, line bounding on hits, same-line dedupe, NUL-suppresses-line. 7 tests.
+4. `src/Walk.zig` recursive walk, skip dotfiles + `.git`, 4KB path arena.
+5. `src/Out.zig` formatting + 256KB buffered writes, pipe-safe 60KB chunks.
+6. `src/Engine.zig` collect-first + `fetchAdd(8)` batch index, fused scan+format, whole-file fast path.
+7. `src/main.zig` wiring, single-file fast lane, exit codes 0/1/2.
+8. Bench table in README with rerun commands, medians re-measured.
+
+## Remaining for the v0.1 tag
+
+- Queue.zig deleted: dead MPMC ring since Loop2 collect-first. Walk takes a plain list.
+- `Walk`/`Out`/`Engine`/`main`/`Io` carry zero unit tests (20 total: Args 5, Search 11, Simd 4). CI smoke covers them end to end; acceptable for v0.1.
+- CI smoke runs `zig test src/Engine.zig` and `src/Out.zig` which hold zero tests: harmless pass, or trim the list to tested files.
+- Tag `v0.1.0` + GitHub release with the two binaries (windows `.exe`, linux) once the user says go.
 
 ## Proven algorithm (from rustygrep `line_spans`)
 

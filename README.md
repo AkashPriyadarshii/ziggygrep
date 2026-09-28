@@ -143,11 +143,10 @@ Method: 200-file 53MB Rust corpus, ReleaseFast binary (x86_64-v3/AVX2), stdout p
 src/
   main.zig    - entry point, error handling, exit codes
   Args.zig    - CLI argument parsing (+ unit tests)
-  Walk.zig    - recursive directory walk, pushes to queue
-  Queue.zig   - bounded MPMC ring, walker to workers (+ unit tests)
+  Walk.zig    - recursive walk, dotfile skip, 4KB path arena
   Search.zig  - literal line scan (+ unit tests)
   Simd.zig    - rarity table + pair picker, kept for long-line corpora (+ unit tests)
-  Engine.zig  - thread pool, walk-to-queue, sorted merge
+  Engine.zig  - thread pool, batch index, sorted merge
   Out.zig     - output formatting, buffered writes
 build.zig     - Zig build script
 build.zig.zon - package metadata

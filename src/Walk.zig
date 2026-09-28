@@ -3,22 +3,14 @@ const Io = std.Io;
 const Dir = Io.Dir;
 const File = Io.File;
 
-// Recursive walk that pushes each file path into a queue as it is found.
-// Skips dotfiles and .git. No gitignore engine in v0.1. The walk runs on
-// the main thread while workers consume the queue, so directory traversal
-// overlaps scanning instead of running as a serial phase first.
-
-const Push = struct {
-    queue: *anyopaque,
-    ctx: *anyopaque,
-    pushFn: *const fn (q: *anyopaque, ctx: *anyopaque, path: []const u8) void,
-};
+// Recursive walk that appends each file path into a caller list.
+// Skips dotfiles and .git. No gitignore engine in v0.1. Collect-first:
+// the walk fills one list, then workers claim batches by atomic index.
 
 pub fn pushAll(
     allocator: std.mem.Allocator,
     io: Io,
     roots: []const []const u8,
-    comptime kind: SinkKind,
     target: anytype,
 ) !void {
     for (roots) |root| {
@@ -36,7 +28,7 @@ pub fn pushAll(
             };
             if (st) |s| {
                 if (s.kind != .directory) {
-                    try pushPath(kind, target, allocator, root);
+                    try pushPath(target, allocator, root);
                     continue;
                 }
             }
@@ -71,34 +63,24 @@ pub fn pushAll(
                 // Overflow fallback: heap join, same ownership contract.
                 full = try std.fs.path.join(allocator, &.{ root, entry.path });
             }
-            // Queue takes ownership: dupe arena paths onto the heap so
+            // List takes ownership: dupe arena paths onto the heap so
             // the arena can be reused next directory.
             const owned = if (@intFromPtr(full.ptr) >= @intFromPtr(&path_arena[0]) and
                 @intFromPtr(full.ptr) < @intFromPtr(&path_arena[0]) + path_arena.len)
                 try allocator.dupe(u8, full)
             else
                 full;
-            try pushPath(kind, target, allocator, owned);
+            try pushPath(target, allocator, owned);
         }
     }
 }
 
-pub const SinkKind = enum { queue, list };
-
-// The ring queue cannot fail on push (it spins when full); the list can
-// fail on append, so a failed list push frees the joined path.
-fn pushPath(comptime kind: SinkKind, target: anytype, allocator: std.mem.Allocator, owned: []const u8) !void {
-    switch (kind) {
-        .queue => {
-            target.push(owned);
-        },
-        .list => {
-            target.append(allocator, owned) catch |err| {
-                allocator.free(owned);
-                return err;
-            };
-        },
-    }
+// The list can fail on append, so a failed push frees the joined path.
+fn pushPath(target: anytype, allocator: std.mem.Allocator, owned: []const u8) !void {
+    target.append(allocator, owned) catch |err| {
+        allocator.free(owned);
+        return err;
+    };
 }
 
 fn isSkipped(path: []const u8) bool {

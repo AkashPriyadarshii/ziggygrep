@@ -8,11 +8,8 @@ const Simd = @import("Simd.zig");
 const Out = @import("Out.zig");
 const Walk = @import("Walk.zig");
 
-// Streaming walk-to-queue. The walker pushes paths straight into a bounded
-// ring while workers pop and scan, so the walk never serializes ahead of
-// the scan. SPSC fast path: ONE worker owns the queue, no cmpxchg, no
-// yield-spins, no per-worker lists to merge. Multi-worker falls back to
-// MPMC claim + per-worker lists + sorted merge for determinism.
+// Collect-first + atomic batch index: walker fills one list, workers
+// fetchAdd(8) batches. No queue, no push/pop CAS per file.
 
 const Result = struct { path: []const u8, bytes: []const u8, count: usize };
 
@@ -39,7 +36,7 @@ pub const Engine = struct {
         // one list, workers fetchAdd(8) batches, merge stays sorted.
         var files: std.ArrayList([]const u8) = .empty;
         defer files.deinit(self.allocator);
-        try Walk.pushAll(self.allocator, self.io, roots, .list, &files);
+        try Walk.pushAll(self.allocator, self.io, roots, &files);
         if (files.items.len == 0) return 0;
         const cpus = std.Thread.getCpuCount() catch 1;
         // Walker is done by now: all logical cores scan. One file =
@@ -173,15 +170,10 @@ pub const Engine = struct {
         return null;
     }
 
-    // Single-thread path: no queue, no merge, one Out, one flush.
+    // Single-thread path: no merge, one Out, one flush.
     const BufResult = struct { bytes: []const u8, count: usize };
 
-    // Queue paths are raw joined strings ("./f000.rs"). rg emits raw
-    // join form too, but it also walks OUR output files when run in the
-    // same dir (self-scan doubles its hit count). Strip the "./" so
-    // full-mode lines read "f000.rs:2:..." like rg's slash form.
-    // walk skips dotfiles; our own full_zg.txt-style outputs must be
-    // written outside the searched root or deleted before comparing.
+    // Walk paths are raw joined strings ("./f000.rs").
     fn displayPath(path: []const u8) []const u8 {
         if (path.len > 2 and path[0] == '.') return path[2..];
         return path;

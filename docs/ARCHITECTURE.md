@@ -6,9 +6,7 @@
 - `Args.zig`: CLI parsing, unit tests beside the parser.
 - `Walk.zig`: recursive `std.fs.Dir.iterate`, yields file paths.
   Skips dotfiles and `.git`. No gitignore engine in v0.1.
-- `Search.zig`: literal scan over a file buffer. Returns match
-  spans `(lineno, start, end)`. Owns the prefilter, short-line
-  skip, jump-past-line, and NUL policy.
+- `Search.zig`: first-byte prefilter + `eql` verify over whole chunks. Line bounding, lineno gaps, and NUL suppression run on verified hits only. Fused emit writes matches straight to the caller buffer, no spans array. Owns the NUL policy.
 - `Out.zig`: `path:lineno:line` formatting, `-l`/`-c`
   variants, max-columns truncation on UTF-8 boundaries,
   buffered single-flush writes.
@@ -16,17 +14,13 @@
 ## Data flow
 
 ```
-walk -> paths -> thread pool -> Search.scan(file) -> spans
-     -> per-thread arena bytes -> sorted merge -> stdout
+walk -> file list -> batch index -> workers scanToBuf(file) -> fused emit
+     -> per-worker result lists -> sorted merge -> stdout (one flush)
 ```
 
 ## Concurrency
 
-One `std.Thread.Pool`. One file per task. Each worker owns a
-byte arena plus a path list. Merge sorts files by path, then
-concatenates arena slices in order. Walk and search run in
-sequence; no nested pools (two pools oversubscribe small
-machines, measured on 2C/4T).
+Fixed `fetchAdd(8)` batches from one file list. Each worker owns scratch/carry/chunk buffers reused across files. Merge sorts by path, then concatenates in order. Single-file roots skip the pool (direct scan, no spawn). No nested pools (two pools oversubscribe small machines, measured on 2C/4T).
 
 ## I/O
 

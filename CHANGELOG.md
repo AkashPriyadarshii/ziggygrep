@@ -5,6 +5,6 @@ Added, Changed, Fixed per release. No changelog-speak in the README.
 
 ## [Unreleased]
 
-- Packed-pair SIMD confirm (`Simd.zig`): two rarest needle bytes by static frequency table, 32-wide compare, verify survivors. 4 tests incl. 300-line fuzz vs scalar.
-- Release builds target x86_64-v3 (AVX2), matching what rg runtime-dispatches to. Debug/test stay baseline. Explicit `-Dtarget` wins.
-- Full 44 to 43ms, miss holds the win (20 vs 21). `-l`/`-c` regressed vs last round (noise + v3 codegen shuffle); fused scan+format is the queued fix.
+- First-byte prefilter + single-`eql` verify for every needle length: memchr skips 32B per step, line bounding runs on verified hits only. Short path (`he`) drops 129 to 40ms; dense path (`HashMap`) 82 to 35ms.
+- `anyChunk` routed through the same prefilter: `-l` wins every pattern (`e -l` 33 to 12ms).
+- Single-thread path fused scan+format: `spans` alloc removed, per-hit header built once on the stack. 22 of 22 bench cases at or below rg, 7 of 7 patterns byte-identical.
